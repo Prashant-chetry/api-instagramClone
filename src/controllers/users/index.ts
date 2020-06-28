@@ -101,9 +101,10 @@ class UserController extends UserVerificationController implements IUserControll
                 errors,
             });
         try {
+            const id = user._id;
             const doc = await Users.findById(id).lean();
             if (!isEmpty(doc || {})) return next(new HttpError(false, 'user already exists', 403));
-            const user = new Users({
+            const userDoc = new Users({
                 profile: {
                     name,
                     gender,
@@ -116,7 +117,7 @@ class UserController extends UserVerificationController implements IUserControll
                 phones,
                 emails,
             });
-            await user?.saveInternal();
+            await userDoc?.saveInternal();
         } catch (error) {
             return next(new HttpError());
         }

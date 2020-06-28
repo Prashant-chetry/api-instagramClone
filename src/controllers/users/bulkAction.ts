@@ -20,10 +20,10 @@ const columns = [
 ];
 const getStringFromData = function ({ header, string, value }: { header: string; string: string; value: object }) {
     const keyString = string.split('.');
-    let obj = { ...value };
+    const obj = { ...value };
     for (let index = 0; index < keyString.length; index++) {
         const element = keyString[index];
-        obj = obj[element];
+        // obj = obj[element];
     }
 };
 
