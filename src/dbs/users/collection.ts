@@ -185,18 +185,17 @@ const userSchema = new Schema(
 userSchema.pre('save', async function (next: HookNextFunction) {
     const user: IUsers = this as IUsers;
     console.debug(user.isModified('password'), 'user.isModified()');
-    if (user.isNew && user.userName) {
-        const msg = {
-            to: user.userName,
-            from: 'prashantchetry98@gmail.com',
-            subject: 'Welcome to Instagram-Clone Website',
-            text: 'and easy to do anywhere, even with Node.js',
-            html: `<strong>Welcome ${user.userName} to instagramClone. we are happy that you joined us</strong>`,
-        };
-        sgMail.send(msg);
-        user.welcomeMailSend = true;
-        next();
-    }
+    // if (user.isNew && user.userName) {
+    //     const msg = {
+    //         to: user.userName,
+    //         from: 'prashantchetry98@gmail.com',
+    //         subject: 'Welcome to Instagram-Clone Website',
+    //         text: 'and easy to do anywhere, even with Node.js',
+    //         html: `<strong>Welcome ${user.userName} to instagramClone. we are happy that you joined us</strong>`,
+    //     };
+    //     sgMail.send(msg);
+    //     user.welcomeMailSend = true;
+    // }
     if (!user.isModified('password')) return next();
     if (user.password) {
         const hashedPassword = await bcrypt.hash(user.password, 10);
