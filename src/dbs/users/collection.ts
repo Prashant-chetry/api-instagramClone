@@ -6,7 +6,7 @@ import genderInfo from '../../common/info/genderInfo';
 import martialStatusInfo from '../../common/info/maritalStatus';
 import bcrypt from 'bcrypt';
 import sgMail from '@sendgrid/mail';
-sgMail.setApiKey('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');
+sgMail.setApiKey(process.env.EMAIL_KEY?.toString() || '');
 
 const nameSchema = new Schema({
     first: {
