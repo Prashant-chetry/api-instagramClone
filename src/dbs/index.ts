@@ -1,12 +1,13 @@
 import Mongoose from 'mongoose';
 
 class MongooseServer {
+    private URL: string = process.env.MONGO_URL?.toString() || '';
     constructor() {
         this.connect();
         this.connectionHandling();
     }
     private connect = (): void => {
-        Mongoose.connect('mongodb://localhost:27017/instagramClone', {
+        Mongoose.connect(this.URL, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
         });

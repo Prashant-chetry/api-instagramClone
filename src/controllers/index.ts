@@ -10,8 +10,10 @@ import rateLimiter from '../middleware/rateLimiter';
 import authMiddleware from '../middleware/auth';
 import postRouter from '../routers/posts';
 import notPageFound from '../common/notPageFound';
+require('dotenv').config();
 
 class MainServerApp {
+    private port: number = parseInt(process.env.PORT || '8080', 10);
     private server: Application;
     private httpServer: Server | undefined;
     private mongodbServer: MongooseServer | undefined;
@@ -25,7 +27,7 @@ class MainServerApp {
     }
     private startServer = (): void => {
         this.httpServer = new Server(this.server);
-        this.httpServer.listen(8080);
+        this.httpServer.listen(this.port);
     };
     private initializeMongoDbServer = (): void => {
         this.mongodbServer = new MongooseServer();
