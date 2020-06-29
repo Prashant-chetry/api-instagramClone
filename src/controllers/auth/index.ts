@@ -45,11 +45,11 @@ class AuthenticationController {
                 emails: [{ address: email }],
             });
             await doc.save();
+            return res.json({ success: true, statusCode: 200, message: 'user created successfully' });
         } catch (error) {
             console.debug(error);
             return next(new HttpError());
         }
-        return res.json({ success: true, statusCode: 200, message: 'user created successfully' });
     };
     public logIn = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const { email, password, secondPassword }: { email: string; password: string; secondPassword: string } = req.body;
@@ -64,7 +64,7 @@ class AuthenticationController {
                 authValidationSchema.passwordValidationAsync(secondPassword),
             ]);
         } catch (error) {
-            return next(new HttpError(false, 'Bad Request', 409));
+            return next(new HttpError(false, 'Bad Request', 400));
         }
         const user = await Users.findOne({ userName: email }).exec();
         if (isEmpty(user || {})) return res.json({ success: false, status: 403, message: "user doesn't exists" });
@@ -97,7 +97,7 @@ class AuthenticationController {
                     iat,
                     exp,
                 },
-                'mySecrete',
+                process.env.jwtSecret || '',
             );
             user?.tokens?.push({
                 token: accessToken,

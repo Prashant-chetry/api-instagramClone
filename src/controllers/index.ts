@@ -1,4 +1,4 @@
-import express, { Application } from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import { Server } from 'http';
 import MongooseServer from '../dbs';
 import cors from 'cors';
@@ -10,6 +10,7 @@ import rateLimiter from '../middleware/rateLimiter';
 import authMiddleware from '../middleware/auth';
 import postRouter from '../routers/posts';
 import notPageFound from '../common/notPageFound';
+import HttpError from '../common/HttpError';
 require('dotenv').config();
 
 class MainServerApp {
@@ -24,6 +25,7 @@ class MainServerApp {
         this.initializeRouteHandler();
         this.startServer();
         this.serverCrashHandler();
+        this.initializeErrorHandling();
     }
     private startServer = (): void => {
         this.httpServer = new Server(this.server);
@@ -50,6 +52,12 @@ class MainServerApp {
             }),
         );
         this.server.use(rateLimiter);
+    };
+    private initializeErrorHandling = (): void => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        this.server.use(function (error: HttpError, req: Request, res: Response, next: NextFunction) {
+            return res.status(error.statusCode).json({ success: error.success, message: error.message });
+        });
     };
     private initializeRouteHandler = (): void => {
         this.server.use('/v1/api/authentication', authenticationRouter);

@@ -1,4 +1,4 @@
-import { Document } from 'mongoose';
+import { Document, Model } from 'mongoose';
 
 /* eslint-disable @typescript-eslint/interface-name-prefix */
 export interface IUsersEmail {
@@ -48,4 +48,6 @@ export default interface IUsers extends Document {
     welcomeMailSend?: boolean;
     use: Array<'web' | 'internal'>;
     saveInternal: () => Promise<IUsers> | undefined;
+    softRemove(): Promise<IUsers>;
+    softRestore(): Promise<IUsers>;
 }

@@ -1,13 +1,14 @@
 import Mongoose from 'mongoose';
 
 class MongooseServer {
-    private URL: string = process.env.MONGO_URL?.toString() || '';
+    private URL = process.env.NODE_ENV?.toString() === 'prod' ? process.env.MONGO_URL?.toString() : 'mongodb://localhost:27017/instagramClone';
     constructor() {
         this.connect();
         this.connectionHandling();
+        console.log(process.env.NODE_ENV, process.env.EMAIL_KEY, this.URL);
     }
     private connect = (): void => {
-        Mongoose.connect(this.URL, {
+        Mongoose.connect(this.URL || '', {
             useNewUrlParser: true,
             useUnifiedTopology: true,
         });

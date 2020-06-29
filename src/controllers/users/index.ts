@@ -212,7 +212,7 @@ class UserController extends UserVerificationController implements IUserControll
                 error,
             });
         }
-        const user = await Users.findById(id).lean();
+        const user = await Users.findById(id).select({ password: 0, tokens: 0 }).lean();
         if (isEmpty(user || {})) {
             return next(new HttpError(false, "user doesn't exists", 404));
         }
@@ -229,10 +229,11 @@ class UserController extends UserVerificationController implements IUserControll
         if (!curUser._id) {
             return res.status(401).json({ success: false, message: 'user not authorized - user profile List' });
         }
+
         // const hasPermission = await checkPermissions(curUser._id, ['userProfileListView']);
         // if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile List' });
         try {
-            const uDocs = await Users.find({}).lean();
+            const uDocs = await Users.find({}).select({ password: 0, tokens: 0 }).lean();
             if (!uDocs.length) {
                 return next(new HttpError(false, 'No user found', 404));
             }
@@ -242,7 +243,7 @@ class UserController extends UserVerificationController implements IUserControll
                 data: uDocs,
             });
         } catch (error) {
-            console.log(error);
+            return next(new HttpError());
         }
     };
     public bulkUserLogOut = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
