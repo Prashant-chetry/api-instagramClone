@@ -24,7 +24,7 @@ class RoleAssignmentController {
             scope: Joi.string().alphanum(),
         }).validate({ userId, role, scope });
         if (error) {
-            return res.status(401).json({ success: false, message: 'Bad Request', error });
+            return res.status(400).json({ success: false, message: 'Bad Request', error });
         }
         try {
             // find roles and roleAssignment

@@ -11,12 +11,11 @@ class RoleAndPermissionController {
     public createPermission = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
         if (isEmpty(user || {})) return res.status(401).json({ success: false, message: 'user not authorized' });
-        const checkAdmin = await isAdmin(user._id);
-        if (!checkAdmin) return res.status(401).json({ success: false, message: 'user not authorized' });
+        // const checkAdmin = await isAdmin(user._id);
+        // if (!checkAdmin) return res.status(401).json({ success: false, message: 'user not authorized' });
         const { permission } = req.body;
         console.debug(permission);
         const { error } = Joi.string().alphanum().max(100).required().validate(permission);
-        console.log(error, 'error');
         if (error) {
             return res.json({
                 success: false,
@@ -29,8 +28,7 @@ class RoleAndPermissionController {
             return res.status(409).json({ success: false, message: 'permission already exists' });
         }
         try {
-            const pDoc = new Roles({ _id: permission });
-            pDoc.save();
+            await new Roles({ _id: permission }).save();
             return res.status(202).json({ success: true, message: 'permission created' });
         } catch (error) {
             return next(new HttpError());
@@ -66,8 +64,8 @@ class RoleAndPermissionController {
     public createRole = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
         if (isEmpty(user || {})) return res.status(401).json({ success: false, message: 'user not authorized' });
-        const checkAdmin = await isAdmin(user._id);
-        if (!checkAdmin) return res.status(401).json({ success: false, message: 'user not authorized' });
+        // const checkAdmin = await isAdmin(user._id);
+        // if (!checkAdmin) return res.status(401).json({ success: false, message: 'user not authorized' });
         const { role, permissions } = req.body;
         const { error } = Joi.object({
             role: Joi.string().alphanum().required().max(100),
