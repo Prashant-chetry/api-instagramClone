@@ -14,8 +14,8 @@ class RoleAssignmentController {
     public assignRoleAndScope = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
         if (isEmpty(user || {})) return res.status(401).json({ success: false, message: 'user not authorized' });
-        const checkAdmin = await isAdmin(user._id);
-        if (!checkAdmin) return res.status(401).json({ success: false, message: 'user not authorized' });
+        // const checkAdmin = await isAdmin(user._id);
+        // if (!checkAdmin) return res.status(401).json({ success: false, message: 'user not authorized' });
 
         const { userId, role, scope } = req.body;
         const { error } = Joi.object({
