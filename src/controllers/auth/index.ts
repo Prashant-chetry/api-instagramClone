@@ -1,6 +1,5 @@
 import bcrypt from 'bcrypt';
 import { Request, NextFunction, Response } from 'express';
-import AuthenticationValidationSchema from '../validationSchema/validation';
 import HttpError from '../../common/HttpError';
 import Users from '../../dbs/users/collection';
 import isEmpty from '../../common/isEmpty';
@@ -23,28 +22,25 @@ class AuthenticationController {
     public register = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const { email, password, secondPassword }: { email: string; password: string; secondPassword: string } = req.body;
         if (password !== secondPassword) {
-            return next(new HttpError(false, 'Bad Request', 404));
+            return next(new HttpError(false, 'Bad Request', 400));
         }
-        try {
-            const authValidationSchema = new AuthenticationValidationSchema();
-            await Promise.all([
-                authValidationSchema.emailValidationAsync(email),
-                authValidationSchema.passwordValidationAsync(password),
-                authValidationSchema.passwordValidationAsync(secondPassword),
-            ]);
-        } catch (error) {
-            return next(new HttpError(false, 'Bad Request', 404));
+        const { error } = Joi.object({
+            email: Joi.string().required().email(),
+            password: Joi.string().required().max(100).min(6),
+            secondPassword: Joi.ref('password'),
+        }).validate({ email, password, secondPassword });
+        if (error) {
+            return res.status(400).json({ success: false, message: 'Bad request', error });
         }
         const user = await Users.findOne({ userName: email }, { userName: 1 }).lean();
         console.debug(user, 'user');
         if (!isEmpty(user || {})) return res.json({ success: false, status: 403, message: 'user already exists' });
         try {
-            const doc = new Users({
+            await new Users({
                 userName: email,
                 password,
                 emails: [{ address: email }],
-            });
-            await doc.save();
+            }).save();
             return res.json({ success: true, statusCode: 200, message: 'user created successfully' });
         } catch (error) {
             console.debug(error);
@@ -54,18 +50,17 @@ class AuthenticationController {
     public logIn = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const { email, password, secondPassword }: { email: string; password: string; secondPassword: string } = req.body;
         if (password !== secondPassword) {
-            return next(new HttpError(false, 'Bad Request', 404));
-        }
-        try {
-            const authValidationSchema = new AuthenticationValidationSchema();
-            await Promise.all([
-                authValidationSchema.emailValidationAsync(email),
-                authValidationSchema.passwordValidationAsync(password),
-                authValidationSchema.passwordValidationAsync(secondPassword),
-            ]);
-        } catch (error) {
             return next(new HttpError(false, 'Bad Request', 400));
         }
+        const { error } = Joi.object({
+            email: Joi.string().required().email(),
+            password: Joi.string().required().max(100).min(6),
+            secondPassword: Joi.ref('password'),
+        }).validate({ email, password, secondPassword });
+        if (error) {
+            return res.status(400).json({ success: false, message: 'Bad request', error });
+        }
+
         const user = await Users.findOne({ userName: email }).exec();
         if (isEmpty(user || {})) return res.json({ success: false, status: 403, message: "user doesn't exists" });
         console.debug(user);
