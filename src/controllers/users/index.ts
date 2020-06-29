@@ -243,6 +243,7 @@ class UserController extends UserVerificationController implements IUserControll
                 data: uDocs,
             });
         } catch (error) {
+            console.log(error);
             return next(new HttpError());
         }
     };
