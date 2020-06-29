@@ -12,15 +12,13 @@ class CommentController {
         if (!user._id) {
             return res.status(401).json({ success: false, message: 'user not authorized - comment create' });
         }
-
-        const id = req.params.id;
+        const postId = req.params.postId;
         const comment: string = req.body.comment;
         const { error } = Joi.object({
-            id: Joi.string().alphanum().required(),
+            postId: Joi.string().alphanum().required(),
             comment: Joi.string().required().max(100).min(10),
-        }).validate({ id, comment });
-        const isValidId = isValidObjectId(id);
-        if (error || !isValidId) {
+        }).validate({ postId, comment });
+        if (error || !isValidObjectId(postId)) {
             return res.status(403).json({
                 success: false,
                 message: 'error',
@@ -28,7 +26,7 @@ class CommentController {
             });
         }
         try {
-            const post = await Posts.findOne({ _id: id, removed: false }, { comments: 1 }).exec();
+            const post = await Posts.findOne({ _id: postId, removed: false }, { comments: 1 }).exec();
             if (!post) {
                 return res.status(404).json({ success: false, message: 'post not found' });
             }
@@ -43,19 +41,17 @@ class CommentController {
     public commentEdit = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
         if (!user._id) {
-            return res.status(401).json({ success: false, message: 'user not authorized - comment create' });
+            return res.status(401).json({ success: false, message: 'user not authorized - comment edit' });
         }
         const postId = req.params.id;
         const { commentId } = req.query;
         const comment: string = req.body.comment;
         const { error } = Joi.object({
             postId: Joi.string().alphanum().required(),
-            commentId: Joi.ref('id'),
+            commentId: Joi.ref('postId'),
             comment: Joi.string().required().max(100).min(10),
         }).validate({ postId, commentId, comment });
-        const isValidPostId = isValidObjectId(postId);
-        const isValidCommentId = isValidObjectId(commentId);
-        if (error || !isValidCommentId || !isValidPostId) {
+        if (error || !isValidObjectId(postId) || !isValidObjectId(commentId)) {
             return res.status(403).json({
                 success: false,
                 message: 'error',
@@ -77,18 +73,16 @@ class CommentController {
     public commentDelete = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
         if (!user._id) {
-            return res.status(401).json({ success: false, message: 'user not authorized - comment create' });
+            return res.status(401).json({ success: false, message: 'user not authorized - comment deletion' });
         }
         const postId = req.params.id;
         const { commentId } = req.query;
         const { error } = Joi.object({
             postId: Joi.string().alphanum().required(),
-            commentId: Joi.ref('id'),
+            commentId: Joi.ref('postId'),
         }).validate({ postId, commentId });
-        const isValidPostId = isValidObjectId(postId);
-        const isValidCommentId = isValidObjectId(commentId);
 
-        if (error || !isValidCommentId || !isValidPostId) {
+        if (error || !isValidObjectId(commentId) || !isValidObjectId(postId)) {
             return res.status(403).json({
                 success: false,
                 message: 'error',
@@ -101,12 +95,12 @@ class CommentController {
                 Comments.findOne({ _id: commentId, postId, 'comments.createdBy': user._id, removed: false }).exec(),
             ]);
             if (!postDoc || !cDoc) {
-                return res.status(404).json({ success: false, message: 'comment not found' });
+                return res.status(404).json({ success: false, message: 'comment or post not found' });
             }
             postDoc.set({ comments: postDoc.comments.filter((i) => i._id !== commentId) });
             cDoc.set({ removed: true });
             await Promise.all([postDoc.save(), cDoc.save()]);
-            return res.status(200).json({ success: true, message: 'post edit successful' });
+            return res.status(200).json({ success: true, message: 'post delete successful' });
         } catch (error) {
             return next(new HttpError());
         }

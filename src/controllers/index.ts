@@ -11,6 +11,7 @@ import authMiddleware from '../middleware/auth';
 import postRouter from '../routers/posts';
 import notPageFound from '../common/notPageFound';
 import HttpError from '../common/HttpError';
+import commentRouter from '../routers/comments';
 require('dotenv').config();
 
 class MainServerApp {
@@ -65,6 +66,7 @@ class MainServerApp {
         this.server.use('/v1/api/roleAssignment', authMiddleware, roleAssignmentRouter);
         this.server.use('/v1/api/roleAndPermission', authMiddleware, roleAndPermissionRouter);
         this.server.use('/v1/api/post', authMiddleware, postRouter);
+        this.server.use('/v1/api/comment', authMiddleware, commentRouter);
         this.server.use('/v1/jobs', authMiddleware);
         this.server.use('*', notPageFound);
     };

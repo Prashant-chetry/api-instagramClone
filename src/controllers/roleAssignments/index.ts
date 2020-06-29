@@ -14,8 +14,8 @@ class RoleAssignmentController {
     public assignRoleAndScope = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
         if (isEmpty(user || {})) return res.status(401).json({ success: false, message: 'user not authorized' });
-        // const checkAdmin = await isAdmin(user._id);
-        // if (!checkAdmin) return res.status(401).json({ success: false, message: 'user not authorized' });
+        const checkAdmin = await isAdmin(user._id);
+        if (!checkAdmin) return res.status(401).json({ success: false, message: 'user not authorized' });
 
         const { userId, role, scope } = req.body;
         const { error } = Joi.object({
@@ -28,18 +28,14 @@ class RoleAssignmentController {
         }
         try {
             // find roles and roleAssignment
-            const [roleDocs, rADoc] = await Promise.all([
-                Roles.find({ _id: role }, { children: 1 }).lean(),
+            const [roleDoc, rADoc] = await Promise.all([
+                Roles.findOne({ _id: role, children: { $nin: [[]] } }, { children: 1 }).lean(),
                 RoleAssignment.findOne({ userId }).lean(),
             ]);
-            if (!roleDocs.length) {
+            if (!roleDoc) {
                 return res.status(404).json({ success: false, message: 'Role not found' });
             }
-            let permissions: Set<string> = new Set();
-            roleDocs.forEach((i) => {
-                permissions = new Set([...permissions, ...i.children]);
-            });
-
+            const permissions: Set<string> = new Set([...roleDoc.children]);
             if (isEmpty(rADoc || {})) {
                 const doc = await this.createRoleAndScopeAssignment({
                     userId,

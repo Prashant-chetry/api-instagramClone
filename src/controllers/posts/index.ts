@@ -5,7 +5,7 @@ import HttpError from '../../common/HttpError';
 import Joi from '@hapi/joi';
 import isEmpty from '../../common/isEmpty';
 import isAdmin from '../../common/isAdmin';
-import mongoose, { Types } from 'mongoose';
+import mongoose, { Types, isValidObjectId } from 'mongoose';
 import Comments from '../../dbs/comments/collections';
 import Users from '../../dbs/users/collection';
 import IComments from '../../dbs/comments/interface';
@@ -18,17 +18,11 @@ class PostController {
             return res.status(401).json({ success: false, message: 'user not authorized - user profile edit' });
         }
         const { error } = Joi.object({
-            title: Joi.string()
-                // .pattern(/^[a-zA-Z]+$/)
-                .max(200)
-                .min(10),
-            subject: Joi.string()
-                // .pattern(/^[a-zA-Z]+$/)
-                .max(500)
-                .min(10),
+            title: Joi.string().max(200).min(10),
+            subject: Joi.string().max(500).min(10),
         }).validate({ title, subject });
         if (error) {
-            return res.json({
+            return res.status(400).json({
                 success: false,
                 message: 'error',
                 error,
@@ -56,7 +50,7 @@ class PostController {
             id: Joi.string().alphanum().max(200).required(),
         }).validate({ title, subject, id });
         if (error) {
-            return res.json({
+            return res.status(400).json({
                 success: false,
                 message: 'error',
                 error,
@@ -83,18 +77,23 @@ class PostController {
     };
     public postDelete = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
+        if (!user._id) {
+            return res.status(401).json({ success: false, message: 'user not authorized - post deletion' });
+        }
         const { id } = req.params;
         const { error } = Joi.string().alphanum().validate(id);
-        if (error) {
-            return res.json({
+        if (error || !isValidObjectId(id)) {
+            return res.status(400).json({
                 success: false,
                 message: 'error',
                 error,
             });
         }
         const admin = isAdmin(user._id);
+        const query = { _id: id, createdBy: user._id, removed: false };
+        if (admin) delete query.createdBy;
         try {
-            const pDoc = await Posts.findOne({ _id: id, removed: false }).exec();
+            const pDoc = await Posts.findOne(query).exec();
             if (!pDoc) return res.status(404).json({ success: false, message: 'post not found' });
             if (admin || pDoc?.createdBy === user._id) {
                 try {
@@ -113,7 +112,7 @@ class PostController {
         const { id } = req.params;
         const { error } = Joi.string().alphanum().validate(id);
         if (error) {
-            return res.json({
+            return res.status(400).json({
                 success: false,
                 message: 'error',
                 error,
@@ -173,7 +172,7 @@ class PostController {
         const user = req.user as IUsers;
         if (!isAdmin(user._id)) return res.status(401).json({ success: false, message: 'user not authorized - postListView' });
         try {
-            const posts = await Posts.find().lean();
+            const posts = await Posts.find().select({ removed: 0 }).lean();
             if (isEmpty(posts || {})) {
                 return res.status(404).json({ success: false, message: 'post not found' });
             }

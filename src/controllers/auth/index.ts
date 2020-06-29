@@ -34,14 +34,14 @@ class AuthenticationController {
         }
         const user = await Users.findOne({ userName: email }, { userName: 1 }).lean();
         console.debug(user, 'user');
-        if (!isEmpty(user || {})) return res.json({ success: false, status: 403, message: 'user already exists' });
+        if (!isEmpty(user || {})) return res.status(403).json({ success: false, message: 'user already exists' });
         try {
             await new Users({
                 userName: email,
                 password,
                 emails: [{ address: email }],
             }).save();
-            return res.json({ success: true, statusCode: 200, message: 'user created successfully' });
+            return res.status(200).json({ success: true, message: 'user created successfully' });
         } catch (error) {
             console.debug(error);
             return next(new HttpError());
@@ -62,10 +62,10 @@ class AuthenticationController {
         }
 
         const user = await Users.findOne({ userName: email }).exec();
-        if (isEmpty(user || {})) return res.json({ success: false, status: 403, message: "user doesn't exists" });
+        if (isEmpty(user || {})) return res.status(403).json({ success: false, message: "user doesn't exists" });
         console.debug(user);
         const match = await this.comparePassword(password, user?.password || '');
-        if (!match) return res.json({ success: false, status: 403, message: "user password doesn't match" });
+        if (!match) return res.status(403).json({ success: false, message: "user password doesn't match" });
         try {
             const tokenExists = [...(user?.tokens || [])].pop();
             if (!isEmpty(tokenExists || {})) {
@@ -125,7 +125,7 @@ class AuthenticationController {
         const { email } = req.body;
         const { error } = Joi.string().email().required().validate(email);
         if (error) {
-            return res.json({
+            return res.status(400).json({
                 success: false,
                 message: 'error',
                 error,
@@ -165,14 +165,14 @@ class AuthenticationController {
             secondNewPassword: Joi.ref('newPassword'),
         }).validate({ currentPassword, newPassword, secondNewPassword });
         if (error) {
-            return res.json({
+            return res.status(400).json({
                 success: false,
                 message: 'error',
                 error,
             });
         }
         const match = await this.comparePassword(currentPassword, user.password || '');
-        if (!match) return res.json({ success: false, status: 403, message: "user password doesn't match" });
+        if (!match) return res.status(403).json({ success: false, message: "user password doesn't match" });
         if (newPassword !== secondNewPassword) {
             return res.status(403).json({ success: false, message: "password didn't match" });
         }

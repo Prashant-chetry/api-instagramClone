@@ -95,7 +95,7 @@ class UserController extends UserVerificationController implements IUserControll
             edit: false,
         });
         if (errors)
-            return res.json({
+            return res.status(403).json({
                 success: false,
                 message: 'error',
                 errors,
@@ -146,7 +146,7 @@ class UserController extends UserVerificationController implements IUserControll
             edit: true,
         });
         if (errors) {
-            return res.json({
+            return res.status(403).json({
                 success: false,
                 message: 'error',
                 errors,
@@ -184,7 +184,7 @@ class UserController extends UserVerificationController implements IUserControll
 
         const { errors } = Joi.string().alphanum().required().min(4).validate(id);
         if (errors) {
-            return res.json({
+            return res.status(403).json({
                 success: false,
                 message: 'error',
                 errors,
@@ -206,7 +206,7 @@ class UserController extends UserVerificationController implements IUserControll
         const { id } = req.query;
         const { error } = Joi.string().alphanum().max(50).validate(id);
         if (error) {
-            return res.json({
+            return res.status(403).json({
                 success: false,
                 message: 'error',
                 error,

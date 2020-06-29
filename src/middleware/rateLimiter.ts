@@ -1,9 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import Joi from '@hapi/joi';
 const reqLogs = new Map();
-const limit = 10;
+const limit = 50;
 const rateLimiter = function (req: Request, res: Response, next: NextFunction): void | Response<unknown> {
     const ip = req.ip;
+
+    const apiKey = req.headers.apiKey;
+    // in case of server, no limit
+    if (apiKey && apiKey === process.env.API_KEY) {
+        return next();
+    }
     const { error } = Joi.string().ip().validate(ip);
     if (error) {
         return res.status(404).json({ success: false, message: 'bad request', error });

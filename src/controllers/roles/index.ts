@@ -17,7 +17,7 @@ class RoleAndPermissionController {
         console.debug(permission);
         const { error } = Joi.string().alphanum().max(100).required().validate(permission);
         if (error) {
-            return res.json({
+            return res.status(403).json({
                 success: false,
                 message: 'error',
                 error,
@@ -42,7 +42,7 @@ class RoleAndPermissionController {
         const { permission } = req.body;
         const { errors } = Joi.string().max(100).required().validate(permission);
         if (errors) {
-            return res.json({
+            return res.status(403).json({
                 success: false,
                 message: 'error',
                 errors,
@@ -72,7 +72,7 @@ class RoleAndPermissionController {
             permissions: Joi.array().items(Joi.string().alphanum().max(100).required()).required(),
         }).validate({ role, permissions });
         if (error) {
-            return res.json({
+            return res.status(403).json({
                 success: false,
                 message: 'error',
                 error,
@@ -105,7 +105,7 @@ class RoleAndPermissionController {
             permissions: Joi.array().items(Joi.string().max(100)),
         }).validate({ role, permissions });
         if (errors) {
-            return res.json({
+            return res.status(403).json({
                 success: false,
                 message: 'error',
                 errors,
@@ -165,7 +165,7 @@ class RoleAndPermissionController {
         const { permission } = req.body;
         const { error } = Joi.string().alphanum().max(100).required().validate(permission);
         if (error) {
-            return res.json({
+            return res.status(403).json({
                 success: false,
                 message: 'error',
                 error,
