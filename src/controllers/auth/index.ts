@@ -69,7 +69,7 @@ class AuthenticationController {
         try {
             const tokenExists = [...(user?.tokens || [])].pop();
             if (!isEmpty(tokenExists || {})) {
-                const { exp: tokenExistsExpiresIn } = jwt.verify(tokenExists?.token || '', 'mySecrete') as {
+                const { exp: tokenExistsExpiresIn } = jwt.verify(tokenExists?.token || '', process.env.jwtSecret || '') as {
                     sub: string;
                     iss: string;
                     iat: Date;
@@ -87,7 +87,7 @@ class AuthenticationController {
                 exp = new Date().setDate(new Date().getDate() + 2);
             const accessToken = jwt.sign(
                 {
-                    iss: 'instagramClone',
+                    iss: process.env.ISS,
                     sub: user?._id,
                     iat,
                     exp,

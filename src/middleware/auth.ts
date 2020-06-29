@@ -16,7 +16,7 @@ const authMiddleware = async function (req: Request, res: Response, next: NextFu
     if (!authKey) return res.status(401).json({ success: false, message: 'authentication failed' });
     try {
         const token = jwt.verify(authKey.toString(), process.env.jwtSecret || '') as { sub: string; iss: string; iat: Date; exp: Date };
-        if (!token || !isValidObjectId(token?.sub)) {
+        if (!token || !isValidObjectId(token?.sub) || token?.iss !== process.env.ISS) {
             return res.status(401).json({ success: false, message: 'authentication failed' });
         }
         console.debug({ 'tokens.token': authKey, 'tokens.createdAt': new Date(token.iat) });
