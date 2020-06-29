@@ -30,7 +30,7 @@ class CommentController {
             if (!post) {
                 return res.status(404).json({ success: false, message: 'post not found' });
             }
-            const commentDoc = new Comments({ comment, createdBy: user._id, updatedBy: user._id });
+            const commentDoc = new Comments({ comment, postId: post._id, createdBy: user._id, updatedBy: user._id });
             post.comments.push({ _id: commentDoc._id });
             await Promise.all([commentDoc.save(), post.save()]);
             return res.status(200).json({ success: true, message: 'comment creation successful' });
