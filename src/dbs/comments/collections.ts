@@ -30,7 +30,7 @@ const commentSchema = new Schema(
         timestamps: true,
     },
 );
-
+require('./server');
 const Comments = model<IComments>('comments', commentSchema);
 export default Comments;
 export { commentSchema };
