@@ -1,4 +1,5 @@
 import { postSchema } from './collections.';
+import IPost from './interface';
 
 postSchema.pre('find', function () {
     this.setQuery({ ...this.getQuery(), removed: false });
@@ -11,8 +12,15 @@ postSchema.virtual('user', {
     foreignField: '_id',
 });
 
-// postSchema.virtual('comment', {
-//     ref: 'comments',
-//     localField: 'comments._id',
-//     foreignField: '_id',
-// });
+postSchema.method({
+    softRemove() {
+        const doc = this as IPost;
+        doc.set({ removed: true });
+        return doc.save();
+    },
+    softRestore() {
+        const doc = this as IPost;
+        doc.set({ removed: false });
+        return doc.save();
+    },
+});

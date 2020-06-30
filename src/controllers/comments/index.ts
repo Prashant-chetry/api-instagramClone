@@ -96,11 +96,11 @@ class CommentController implements ICommentController {
                 Comments.findOne({ _id: commentId, postId, 'comments.createdBy': user._id, removed: false }).exec(),
             ]);
             if (!postDoc || !cDoc) {
+                console.log(postDoc, cDoc);
                 return res.status(404).json({ success: false, message: 'comment or post not found' });
             }
             postDoc.set({ comments: postDoc.comments.filter((i) => i._id !== commentId) });
-            cDoc.set({ removed: true });
-            await Promise.all([postDoc.save(), cDoc.save()]);
+            await Promise.all([postDoc.save(), cDoc.softRemove()]);
             return res.status(200).json({ success: true, message: 'post delete successful' });
         } catch (error) {
             return next(new HttpError());
@@ -123,6 +123,7 @@ class CommentController implements ICommentController {
         }
         try {
             const comments = await Comments.find({ postId })
+                .select({ removed: 0 })
                 .populate({ path: 'user', select: { userName: 1 }, match: { removed: false } })
                 .lean();
             if (!comments.length) return res.status(404).json({ success: false, message: 'no comment found' });

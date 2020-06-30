@@ -5,7 +5,7 @@ import HttpError from '../../common/HttpError';
 import Joi from '@hapi/joi';
 import isEmpty from '../../common/isEmpty';
 import isAdmin from '../../common/isAdmin';
-import mongoose, { Types, isValidObjectId } from 'mongoose';
+import { Types, isValidObjectId } from 'mongoose';
 import Comments from '../../dbs/comments/collections';
 import Users from '../../dbs/users/collection';
 import IComments from '../../dbs/comments/interface';
@@ -59,9 +59,7 @@ class PostController implements IPostController {
                 error,
             });
         }
-        const validId = mongoose.isValidObjectId(id);
-        console.log(validId);
-        if (!validId) return res.status(401).json({ success: false, message: 'not valid id' });
+        if (!isValidObjectId(id)) return res.status(401).json({ success: false, message: 'not valid id' });
         try {
             const post = await Posts.findById(id).exec();
             if (isEmpty(post || {})) {
@@ -99,13 +97,8 @@ class PostController implements IPostController {
             const pDoc = await Posts.findOne(query).exec();
             if (!pDoc) return res.status(404).json({ success: false, message: 'post not found' });
             if (admin || pDoc?.createdBy === user._id) {
-                try {
-                    pDoc.set({ removed: true });
-                    await pDoc.save();
-                    return res.status(200).json({ success: true, message: 'post delete successful' });
-                } catch (error) {
-                    throw new Error('failed to remove post');
-                }
+                await pDoc.softRemove();
+                return res.status(200).json({ success: true, message: 'post delete successful' });
             } else return res.status(402).json({ success: false, message: 'user not authorized - delete post' });
         } catch (error) {
             return next(new HttpError());
@@ -113,8 +106,8 @@ class PostController implements IPostController {
     };
     public postView = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const { id } = req.params;
-        const { error } = Joi.string().alphanum().validate(id);
-        if (error) {
+        const { error } = Joi.string().alphanum().required().validate(id);
+        if (error || !isValidObjectId(id)) {
             return res.status(400).json({
                 success: false,
                 message: 'error',
@@ -122,10 +115,14 @@ class PostController implements IPostController {
             });
         }
         try {
-            const doc = await Posts.findOne({ _id: id, removed: false }).lean();
+            const doc = await Posts.findOne({ _id: id, removed: false }, { removed: 0 })
+                .populate({ path: 'user', select: { userName: 1 }, match: { removed: false, userName: { $nin: [[], ''] } } })
+                .lean();
             if (!doc) return res.status(404).json({ success: false, message: 'post not found' });
+            const commentObj: { [key: string]: IComments } = {};
+
             const { data, status }: { data: { success: boolean; message: string; data?: [IComments] }; status: number } = await axios.get(
-                apiUrl(`/view/list/${doc._id}`),
+                apiUrl(`/v1/api/comment/view/list/${doc._id}`),
                 {
                     headers: {
                         'content-type': 'application/json',
@@ -134,40 +131,16 @@ class PostController implements IPostController {
                 },
             );
             if (status === 200) {
+                data.data?.forEach((i) => (commentObj[i._id] = i));
                 const comments: Array<IComments> = [];
                 doc.comments.forEach((comment) => {
-                    const c = data.data?.find((i) => comment._id === i._id);
+                    const id = (comment._id as unknown) as string;
+                    const c = commentObj[id];
                     if (!c) return;
                     comments.push(c);
                 });
                 doc.comments = comments;
             }
-            // const commentsCursor = Comments.collection.find<IComments>({
-            //     postId: doc._id,
-            //     removed: false,
-            //     _id: { $in: doc.comments.map((i) => i._id) },
-            // });
-            // const comments = new Map<Types.ObjectId, IComments>(),
-            //     users = new Map<Types.ObjectId, IUsers>(),
-            //     commentArr = [];
-            // commentsCursor.forEach((i) => {
-            //     if (comments.has(i._id)) return;
-            //     comments.set(i._id, i);
-            // });
-            // if (comments.size) {
-            //     const userCursor = Users.collection.find<IUsers>(
-            //         { _id: { $in: commentsCursor.map((i) => i.createdBy) } },
-            //         { fields: { userName: 1 } },
-            //     );
-            //     userCursor.forEach((i) => {
-            //         if (users.has(i._id)) return;
-            //         users.set(i._id, i);
-            //     });
-
-            //     doc.comments.forEach((i) => {
-            //         if (!comments.has(i._id || Types.ObjectId())) return;
-            //         // commentArr.push({ ...comments.get(i._id || Types.ObjectId()), ...users.get(i._id) });
-            //     });
             return res.status(200).json({ success: true, message: 'post view successful', data: doc });
         } catch (error) {
             console.error(error);

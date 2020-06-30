@@ -7,6 +7,7 @@ const commentSchema = new Schema(
             type: String,
             minlength: 10,
             maxlength: 100,
+            index: 'text',
         },
         postId: {
             type: Schema.Types.ObjectId,
@@ -30,10 +31,6 @@ const commentSchema = new Schema(
     },
 );
 
-commentSchema.virtual('user', {
-    ref: 'users',
-    localField: 'createdBy',
-    foreignField: '_id',
-});
 const Comments = model<IComments>('comments', commentSchema);
 export default Comments;
+export { commentSchema };

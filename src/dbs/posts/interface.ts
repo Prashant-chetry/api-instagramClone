@@ -13,5 +13,7 @@ interface IPost extends Document {
     updatedAt: Date;
     comments: Array<IComment>;
     removed?: boolean;
+    softRemove(): Promise<IPost>;
+    softRestore(): Promise<IPost>;
 }
 export default IPost;

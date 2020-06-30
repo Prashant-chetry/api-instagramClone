@@ -9,5 +9,7 @@ interface IComments extends Document {
     createdBy?: Types.ObjectId;
     updatedBy?: Types.ObjectId;
     removed?: boolean;
+    softRemove(): Promise<IComments>;
+    softRestore(): Promise<IComments>;
 }
 export default IComments;

@@ -7,6 +7,7 @@ import checkPermissions from '../../common/checkPermission';
 import IUsers from '../../dbs/users/interface';
 import IUserController from './interface';
 import UserVerificationController from './verifications';
+import { isValidObjectId } from 'mongoose';
 
 class UserController extends UserVerificationController implements IUserController {
     static validationSchema = Joi.object({
@@ -177,13 +178,13 @@ class UserController extends UserVerificationController implements IUserControll
         const { id } = req.query;
         const curUser = req.user as IUsers;
         if (!curUser._id) {
-            return res.status(401).json({ success: false, message: 'user not authorized - user profile edit' });
+            return res.status(401).json({ success: false, message: 'user not authorized - user profile delete' });
         }
         const hasPermission = await checkPermissions(curUser._id, ['userProfileDelete']);
-        if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile edit' });
+        if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile delete' });
 
         const { errors } = Joi.string().alphanum().required().min(4).validate(id);
-        if (errors) {
+        if (errors || !isValidObjectId(id)) {
             return res.status(403).json({
                 success: false,
                 message: 'error',
@@ -191,7 +192,10 @@ class UserController extends UserVerificationController implements IUserControll
             });
         }
         try {
-            Users.findById(id).remove().exec();
+            const userDoc = await Users.findOne({ _id: id, removed: false }).exec();
+            if (!userDoc) return res.status(404).json({ success: false, message: 'no user found' });
+            await userDoc.softRemove();
+            return res.status(200).json({ success: true, message: 'user removed' });
         } catch (error) {
             return next(new HttpError());
         }
@@ -201,26 +205,30 @@ class UserController extends UserVerificationController implements IUserControll
         if (!curUser._id) {
             return res.status(401).json({ success: false, message: 'user not authorized - user profile view' });
         }
-        const hasPermission = await checkPermissions(curUser._id, ['userProfileView']);
-        if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile view' });
-        const { id } = req.query;
-        const { error } = Joi.string().alphanum().max(50).validate(id);
-        if (error) {
-            return res.status(403).json({
-                success: false,
-                message: 'error',
-                error,
+        try {
+            const hasPermission = await checkPermissions(curUser._id, ['userProfileView']);
+            if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile view' });
+            const { id } = req.query;
+            const { error } = Joi.string().alphanum().max(50).validate(id);
+            if (error || !isValidObjectId(id)) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'error',
+                    error,
+                });
+            }
+            const user = await Users.findOne({ _id: id, removed: false }).select({ password: 0, tokens: 0 }).lean();
+            if (isEmpty(user || {})) {
+                return next(new HttpError(false, "user doesn't exists", 404));
+            }
+            return res.status(200).json({
+                success: true,
+                message: 'user found',
+                data: user,
             });
+        } catch (error) {
+            return next(new HttpError());
         }
-        const user = await Users.findById(id).select({ password: 0, tokens: 0 }).lean();
-        if (isEmpty(user || {})) {
-            return next(new HttpError(false, "user doesn't exists", 404));
-        }
-        return res.status(200).json({
-            success: true,
-            message: 'user found',
-            data: user,
-        });
     };
     public userList = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         // add filter
@@ -229,19 +237,15 @@ class UserController extends UserVerificationController implements IUserControll
         if (!curUser._id) {
             return res.status(401).json({ success: false, message: 'user not authorized - user profile List' });
         }
-
-        // const hasPermission = await checkPermissions(curUser._id, ['userProfileListView']);
-        // if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile List' });
         try {
+            const hasPermission = await checkPermissions(curUser._id, ['userProfileListView']);
+            if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile List' });
+
             const uDocs = await Users.find({}).select({ password: 0, tokens: 0 }).lean();
             if (!uDocs.length) {
                 return next(new HttpError(false, 'No user found', 404));
             }
-            return res.status(200).json({
-                success: true,
-                message: 'user found',
-                data: uDocs,
-            });
+            return res.status(200).json({ success: true, message: 'user found', data: uDocs });
         } catch (error) {
             console.log(error);
             return next(new HttpError());
@@ -249,7 +253,6 @@ class UserController extends UserVerificationController implements IUserControll
     };
     public bulkUserLogOut = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const { from, to } = req.body;
-        console.debug(typeof to, from);
         const { error } = Joi.object({
             from: Joi.date().greater('6-10-2020').less(Joi.ref('to')).required(),
             to: Joi.date().required(),
