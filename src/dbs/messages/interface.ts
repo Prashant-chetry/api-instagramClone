@@ -2,10 +2,10 @@
 import { Document, Types } from 'mongoose';
 
 export interface IMessageValue {
-    value: string;
+    message: string;
 }
 export default interface IMessage extends Document {
-    messages: Array<IMessageValue>;
+    conversations: Array<IMessageValue>;
     to: Types.ObjectId;
     encrypted?: boolean;
     createdBy?: Types.ObjectId;

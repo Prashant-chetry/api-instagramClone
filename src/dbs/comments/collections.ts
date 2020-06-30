@@ -30,5 +30,10 @@ const commentSchema = new Schema(
     },
 );
 
+commentSchema.virtual('user', {
+    ref: 'users',
+    localField: 'createdBy',
+    foreignField: '_id',
+});
 const Comments = model<IComments>('comments', commentSchema);
 export default Comments;

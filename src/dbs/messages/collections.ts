@@ -1,8 +1,8 @@
 import { Schema, model } from 'mongoose';
 import IMessage from './interface';
-const message = new Schema(
+const conversationSchema = new Schema(
     {
-        value: {
+        message: {
             type: String,
             required: true,
             maxlength: 100,
@@ -11,8 +11,8 @@ const message = new Schema(
     { timestamps: true },
 );
 const messageSchema = new Schema({
-    messages: {
-        type: [message],
+    conversations: {
+        type: [conversationSchema],
     },
     to: {
         type: Schema.Types.ObjectId,
@@ -35,6 +35,6 @@ const messageSchema = new Schema({
         default: false,
     },
 });
-messageSchema.index({ for: 1, createdBy: 1 });
+messageSchema.index({ to: 1, createdBy: 1 });
 const Messages = model<IMessage>('messages', messageSchema);
 export default Messages;

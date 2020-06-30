@@ -10,11 +10,10 @@ import checkPermissions from '../../common/checkPermission';
 class RoleAndPermissionController {
     public createPermission = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
-        if (isEmpty(user || {})) return res.status(401).json({ success: false, message: 'user not authorized' });
-        // const checkAdmin = await isAdmin(user._id);
-        // if (!checkAdmin) return res.status(401).json({ success: false, message: 'user not authorized' });
+        if (!user._id) return res.status(401).json({ success: false, message: 'user not authorized' });
+        const checkAdmin = await isAdmin(user._id);
+        if (!checkAdmin) return res.status(401).json({ success: false, message: 'user not authorized' });
         const { permission } = req.body;
-        console.debug(permission);
         const { error } = Joi.string().alphanum().max(100).required().validate(permission);
         if (error) {
             return res.status(403).json({
@@ -64,8 +63,8 @@ class RoleAndPermissionController {
     public createRole = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
         if (isEmpty(user || {})) return res.status(401).json({ success: false, message: 'user not authorized' });
-        // const checkAdmin = await isAdmin(user._id);
-        // if (!checkAdmin) return res.status(401).json({ success: false, message: 'user not authorized' });
+        const checkAdmin = await isAdmin(user._id);
+        if (!checkAdmin) return res.status(401).json({ success: false, message: 'user not authorized' });
         const { role, permissions } = req.body;
         const { error } = Joi.object({
             role: Joi.string().alphanum().required().max(100),

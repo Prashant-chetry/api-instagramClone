@@ -5,8 +5,9 @@ import { isValidObjectId } from 'mongoose';
 import Posts from '../../dbs/posts/collections.';
 import HttpError from '../../common/HttpError';
 import Comments from '../../dbs/comments/collections';
+import ICommentController from './interface';
 
-class CommentController {
+class CommentController implements ICommentController {
     public commentCreate = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
         if (!user._id) {
@@ -43,12 +44,12 @@ class CommentController {
         if (!user._id) {
             return res.status(401).json({ success: false, message: 'user not authorized - comment edit' });
         }
-        const postId = req.params.id;
-        const { commentId } = req.query;
+        const postId = req.params.postId;
+        const commentId = req.query.commentId;
         const comment: string = req.body.comment;
         const { error } = Joi.object({
             postId: Joi.string().alphanum().required(),
-            commentId: Joi.ref('postId'),
+            commentId: Joi.string().alphanum().required(),
             comment: Joi.string().required().max(100).min(10),
         }).validate({ postId, commentId, comment });
         if (error || !isValidObjectId(postId) || !isValidObjectId(commentId)) {
@@ -75,11 +76,11 @@ class CommentController {
         if (!user._id) {
             return res.status(401).json({ success: false, message: 'user not authorized - comment deletion' });
         }
-        const postId = req.params.id;
-        const { commentId } = req.query;
+        const postId = req.params.postId;
+        const commentId = req.query.commentId;
         const { error } = Joi.object({
             postId: Joi.string().alphanum().required(),
-            commentId: Joi.ref('postId'),
+            commentId: Joi.string().alphanum().required(),
         }).validate({ postId, commentId });
 
         if (error || !isValidObjectId(commentId) || !isValidObjectId(postId)) {
@@ -101,6 +102,29 @@ class CommentController {
             cDoc.set({ removed: true });
             await Promise.all([postDoc.save(), cDoc.save()]);
             return res.status(200).json({ success: true, message: 'post delete successful' });
+        } catch (error) {
+            return next(new HttpError());
+        }
+    };
+    public commentListView = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+        const user = req.user as IUsers;
+        if (!user._id) {
+            return res.status(401).json({ success: false, message: 'user not authorized - comment list view' });
+        }
+        const postId = req.params.postId;
+        const { error } = Joi.string().alphanum().required().validate(postId);
+
+        if (error || !isValidObjectId(postId)) {
+            return res.status(403).json({
+                success: false,
+                message: 'error',
+                error: error ? error : 'invalid id',
+            });
+        }
+        try {
+            const comments = await Comments.find({ postId }).populate('user').lean();
+            if (!comments.length) return res.status(404).json({ success: false, message: 'no comment found' });
+            return res.status(200).json({ success: true, message: 'comment found', data: comments });
         } catch (error) {
             return next(new HttpError());
         }

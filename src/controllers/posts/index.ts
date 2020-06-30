@@ -9,8 +9,9 @@ import mongoose, { Types, isValidObjectId } from 'mongoose';
 import Comments from '../../dbs/comments/collections';
 import Users from '../../dbs/users/collection';
 import IComments from '../../dbs/comments/interface';
+import IPostController from './interface';
 
-class PostController {
+class PostController implements IPostController {
     public postCreate = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
         const { title, subject } = req.body;

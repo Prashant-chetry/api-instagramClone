@@ -8,29 +8,33 @@ import { isValidObjectId } from 'mongoose';
 class MessageController {
     public messageCreate = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
-        if (!user._id) return res.status(401).json({ success: false, message: 'user not authenticated' });
+        if (!user._id) return res.status(401).json({ success: false, message: 'user not authenticated - message creation' });
         const { message, from, to } = req.body;
         const { error } = Joi.object({
             messsage: Joi.string().required().max(100),
             from: Joi.string().alphanum().required(),
-            to: Joi.ref('from'),
-        }).validate({
-            message,
-            from,
-            to,
-        });
-        if (error) {
+            to: Joi.string().alphanum().required(),
+        }).validate({ message, from, to });
+
+        if (error || !isValidObjectId(from) || !isValidObjectId(to)) {
             return res.status(400).json({ success: false, message: 'bad request body' });
         }
         try {
-            await new Messages({ messages: [{ value: message }], to, createdBy: from, updatedBy: from }).save();
+            const mDoc = await Messages.findOne({ to, createdBy: from }).exec();
+            if (!mDoc) {
+                await new Messages({ conversations: [{ message }], to, createdBy: from, updatedBy: from }).save();
+            } else {
+                mDoc.conversations.push({ message });
+                await mDoc.save();
+            }
+            return res.status(200).json({ success: true, message: 'message created' });
         } catch (error) {
             return next(new HttpError());
         }
     };
     public messageView = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
-        if (!user._id) return res.status(401).json({ success: false, message: 'user not authenticated' });
+        if (!user._id) return res.status(401).json({ success: false, message: 'user not authenticated - message view' });
         const { from } = req.params;
         const { error } = Joi.string().alphanum().required().validate(from);
         if (error || !isValidObjectId(from)) {
@@ -46,7 +50,7 @@ class MessageController {
     };
     public messageList = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
-        if (!user._id) return res.status(401).json({ success: false, message: 'user not authenticated' });
+        if (!user._id) return res.status(401).json({ success: false, message: 'user not authenticated - message list' });
         try {
             const docs = await Messages.find({ to: user._id }).select({ messages: 0 }).lean();
             if (!docs.length) {
@@ -59,7 +63,7 @@ class MessageController {
     };
     public messageEdit = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const user = req.user as IUsers;
-        if (!user._id) return res.status(401).json({ success: false, message: 'user not authenticated' });
+        if (!user._id) return res.status(401).json({ success: false, message: 'user not authenticated - message edit' });
         const { to, messageId } = req.query as { to: string; messageId: string };
         const message = req.body.message;
         const { error } = Joi.object({
@@ -74,7 +78,9 @@ class MessageController {
             const doc = await Messages.findOne({ createdBy: user._id, 'messages._id': messageId, to });
             if (!doc) return res.status(404).json({ success: false, message: 'message not found' });
             // edit to - do
-        } catch (error) {}
+        } catch (error) {
+            return next(new HttpError());
+        }
     };
 }
 export default MessageController;
