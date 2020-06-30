@@ -5,7 +5,6 @@ class MongooseServer {
     constructor() {
         this.connect();
         this.connectionHandling();
-        console.log(process.env.NODE_ENV, process.env.EMAIL_KEY, this.URL);
     }
     private connect = (): void => {
         Mongoose.connect(this.URL || '', {
