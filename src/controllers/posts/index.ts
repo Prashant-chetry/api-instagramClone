@@ -143,7 +143,6 @@ class PostController implements IPostController {
             }
             return res.status(200).json({ success: true, message: 'post view successful', data: doc });
         } catch (error) {
-            console.error(error);
             return next(new HttpError());
         }
     };
