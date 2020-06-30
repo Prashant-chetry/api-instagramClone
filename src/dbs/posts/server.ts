@@ -11,8 +11,8 @@ postSchema.virtual('user', {
     foreignField: '_id',
 });
 
-postSchema.virtual('comments', {
-    ref: 'comments',
-    localField: 'comments._id',
-    foreignField: '_id',
-});
+// postSchema.virtual('comment', {
+//     ref: 'comments',
+//     localField: 'comments._id',
+//     foreignField: '_id',
+// });
