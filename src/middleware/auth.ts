@@ -26,6 +26,7 @@ const authMiddleware = async function (req: Request, res: Response, next: NextFu
         const expiresIn = tokens?.pop()?.expiresIn;
         if (new Date().getTime() > new Date(expiresIn || '').getTime()) return res.status(401).json({ success: false, message: 'token expired' });
         req.user = user;
+        req.authInfo = 'Bearer ' + authKey;
         return next();
     } catch (error) {
         return next(new HttpError());

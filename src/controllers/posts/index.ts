@@ -10,6 +10,8 @@ import Comments from '../../dbs/comments/collections';
 import Users from '../../dbs/users/collection';
 import IComments from '../../dbs/comments/interface';
 import IPostController from './interface';
+import axios from 'axios';
+import apiUrl from '../../common/apiUrl';
 
 class PostController implements IPostController {
     public postCreate = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
@@ -122,6 +124,24 @@ class PostController implements IPostController {
         try {
             const doc = await Posts.findOne({ _id: id, removed: false }).lean();
             if (!doc) return res.status(404).json({ success: false, message: 'post not found' });
+            const { data, status }: { data: { success: boolean; message: string; data?: [IComments] }; status: number } = await axios.get(
+                apiUrl(`/view/list/${doc._id}`),
+                {
+                    headers: {
+                        'content-type': 'application/json',
+                        authentication: req.authInfo,
+                    },
+                },
+            );
+            if (status === 200) {
+                const comments: Array<IComments> = [];
+                doc.comments.forEach((comment) => {
+                    const c = data.data?.find((i) => comment._id === i._id);
+                    if (!c) return;
+                    comments.push(c);
+                });
+                doc.comments = comments;
+            }
             // const commentsCursor = Comments.collection.find<IComments>({
             //     postId: doc._id,
             //     removed: false,
@@ -148,21 +168,6 @@ class PostController implements IPostController {
             //         if (!comments.has(i._id || Types.ObjectId())) return;
             //         // commentArr.push({ ...comments.get(i._id || Types.ObjectId()), ...users.get(i._id) });
             //     });
-            const agr = Comments.aggregate([
-                { $match: { _id: { $in: doc.comments.map((i) => i._id) || [], postId: doc._id, removed: false } } },
-                {
-                    $lookup: {
-                        from: 'users',
-                        let: { createdBy: '$userIds' },
-                        pipeline: [{ $match: { $expr: { $in: ['$_id', '$$userIds'] } } }, { $project: { userName: 1 } }],
-                    },
-                    as: 'users',
-                },
-                { $unwind: '$users' },
-                { $group: { _id: { commentId: '$_id' } } },
-            ]).exec();
-            console.debug(agr, 'agr');
-            // }
             return res.status(200).json({ success: true, message: 'post view successful', data: doc });
         } catch (error) {
             console.error(error);
@@ -173,7 +178,10 @@ class PostController implements IPostController {
         const user = req.user as IUsers;
         if (!isAdmin(user._id)) return res.status(401).json({ success: false, message: 'user not authorized - postListView' });
         try {
-            const posts = await Posts.find().select({ removed: 0 }).lean();
+            const posts = await Posts.find()
+                .select({ removed: 0 })
+                .populate({ path: 'user', select: { userName: 1 } })
+                .lean();
             if (isEmpty(posts || {})) {
                 return res.status(404).json({ success: false, message: 'post not found' });
             }

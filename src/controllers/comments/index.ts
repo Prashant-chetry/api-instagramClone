@@ -122,7 +122,9 @@ class CommentController implements ICommentController {
             });
         }
         try {
-            const comments = await Comments.find({ postId }).populate('user').lean();
+            const comments = await Comments.find({ postId })
+                .populate({ path: 'user', select: { userName: 1 }, match: { removed: false } })
+                .lean();
             if (!comments.length) return res.status(404).json({ success: false, message: 'no comment found' });
             return res.status(200).json({ success: true, message: 'comment found', data: comments });
         } catch (error) {
