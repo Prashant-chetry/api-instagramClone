@@ -59,8 +59,8 @@ class PostController implements IPostController {
         }
         if (!isValidObjectId(id)) return res.status(401).json({ success: false, message: 'not valid id' });
         try {
-            const post = await Posts.findById(id).exec();
-            if (isEmpty(post || {})) {
+            const post = await Posts.findOne({ _id: id, removed: false }).select({ title: 1, subject: 1, updatedBy: 1 }).exec();
+            if (!post) {
                 return res.status(404).json({ success: false, message: 'No post found' });
             }
             const data = { title, subject };
@@ -92,7 +92,7 @@ class PostController implements IPostController {
         const query = { _id: id, createdBy: user._id, removed: false };
         if (admin) delete query.createdBy;
         try {
-            const pDoc = await Posts.findOne(query).exec();
+            const pDoc = await Posts.findOne(query).select({ removed: 1, createdBy: 1 }).exec();
             if (!pDoc) return res.status(404).json({ success: false, message: 'post not found' });
             if (admin || pDoc?.createdBy === user._id) {
                 await pDoc.softRemove();
@@ -125,6 +125,7 @@ class PostController implements IPostController {
                     headers: {
                         'content-type': 'application/json',
                         authentication: req.authInfo,
+                        ...(process.env.API_KEY ? { apiKey: process.env.API_KEY?.toString() } : {}),
                     },
                 },
             );

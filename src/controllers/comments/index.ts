@@ -60,7 +60,9 @@ class CommentController implements ICommentController {
             });
         }
         try {
-            const cDoc = await Comments.findOne({ _id: commentId, createdBy: user._id, removed: false, postId }).exec();
+            const cDoc = await Comments.findOne({ _id: commentId, createdBy: user._id, removed: false, postId })
+                .select({ comment: 1, updatedBy: 1 })
+                .exec();
             if (!cDoc) {
                 return res.status(404).json({ success: false, message: 'comment not found' });
             }
@@ -93,7 +95,7 @@ class CommentController implements ICommentController {
         try {
             const [postDoc, cDoc] = await Promise.all([
                 Posts.findOne({ _id: postId, 'comments._id': commentId, removed: false }, { comments: 1 }).exec(),
-                Comments.findOne({ _id: commentId, postId, 'comments.createdBy': user._id, removed: false }).exec(),
+                Comments.findOne({ _id: commentId, postId, 'comments.createdBy': user._id, removed: false }).select({ removed: 1 }).exec(),
             ]);
             if (!postDoc || !cDoc) {
                 console.log(postDoc, cDoc);

@@ -206,8 +206,8 @@ class UserController extends UserVerificationController implements IUserControll
             return res.status(401).json({ success: false, message: 'user not authorized - user profile view' });
         }
         try {
-            const hasPermission = await checkPermissions(curUser._id, ['userProfileView']);
-            if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile view' });
+            // const hasPermission = await checkPermissions(curUser._id, ['userProfileView']);
+            // if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile view' });
             const { id } = req.query;
             const { error } = Joi.string().alphanum().max(50).validate(id);
             if (error || !isValidObjectId(id)) {
@@ -238,8 +238,8 @@ class UserController extends UserVerificationController implements IUserControll
             return res.status(401).json({ success: false, message: 'user not authorized - user profile List' });
         }
         try {
-            const hasPermission = await checkPermissions(curUser._id, ['userProfileListView']);
-            if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile List' });
+            // const hasPermission = await checkPermissions(curUser._id, ['userProfileListView']);
+            // if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile List' });
 
             const uDocs = await Users.find({}).select({ password: 0, tokens: 0 }).lean();
             if (!uDocs.length) {
