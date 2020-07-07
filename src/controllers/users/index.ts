@@ -208,7 +208,7 @@ class UserController extends UserVerificationController implements IUserControll
         try {
             // const hasPermission = await checkPermissions(curUser._id, ['userProfileView']);
             // if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile view' });
-            const { id } = req.query;
+            const { id } = req.params;
             const { error } = Joi.string().alphanum().max(50).validate(id);
             if (error || !isValidObjectId(id)) {
                 return res.status(403).json({
