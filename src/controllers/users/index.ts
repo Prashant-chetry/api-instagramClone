@@ -125,16 +125,22 @@ class UserController extends UserVerificationController implements IUserControll
     };
     public profileEdit = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
         const { id } = req.query;
-        const curUser = req.user as IUsers;
-        if (!curUser._id) {
+        const user = req.user as IUsers;
+        if (!id?.length || !isValidObjectId(id)) return next(new HttpError(false, 'No user Id', 404));
+        if (!user._id || !isValidObjectId(user._id)) {
             return res.status(401).json({ success: false, message: 'user not authorized - user profile edit' });
         }
-        const hasPermission = await checkPermissions(curUser._id, ['userProfileEdit']);
-        if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile edit' });
+        try {
+            if (user._id !== id) {
+                const hasPermission = await checkPermissions(user._id, ['userProfileEdit']);
+                if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile edit' });
+            }
+        } catch (error) {
+            return next(new HttpError());
+        }
 
-        if (!id?.length) return next(new HttpError(false, 'No user Id', 404));
         const { name, gender, panid, maritalStatus, phones, aadharId, address, dob, emails } = req.body;
-        const { errors } = UserController.validationSchema.validate({
+        const { error } = UserController.validationSchema.validate({
             name,
             gender,
             panid,
@@ -146,56 +152,159 @@ class UserController extends UserVerificationController implements IUserControll
             emails,
             edit: true,
         });
-        if (errors) {
+        if (error) {
             return res.status(403).json({
                 success: false,
                 message: 'error',
-                errors,
+                error,
             });
         }
-        const cursor = Users.findById(id);
-        const doc = await cursor.lean();
-        if (isEmpty(doc || {})) {
-            return next(new HttpError(false, 'No user found by Id', 404));
+        try {
+            const doc = await Users.findOne({ _id: id, removed: false }).exec();
+            if (isEmpty(doc || {})) {
+                return next(new HttpError(false, 'No user found by Id', 404));
+            }
+            doc?.set({
+                profile: {
+                    name,
+                    gender,
+                    maritalStatus,
+                    panid,
+                    address,
+                    aadharId,
+                    dob,
+                },
+                emails,
+                phones,
+            });
+            await doc?.save();
+        } catch (error) {
+            return next(new HttpError());
         }
-        const user = await cursor.exec();
-        user?.set({
-            profile: {
-                name,
-                gender,
-                maritalStatus,
-                panid,
-                address,
-                aadharId,
-                dob,
-            },
-            emails,
-            phones,
-        });
-        user?.save();
     };
-    public profileDelete = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
-        const { id } = req.query;
-        const curUser = req.user as IUsers;
-        if (!curUser._id) {
+    public userDelete = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+        const { id } = req.params;
+        const user = req.user as IUsers;
+        if (!id?.length || !isValidObjectId(id)) return next(new HttpError(false, 'No user Id', 404));
+        if (!user._id || !isValidObjectId(user._id)) {
             return res.status(401).json({ success: false, message: 'user not authorized - user profile delete' });
         }
-        const hasPermission = await checkPermissions(curUser._id, ['userProfileDelete']);
-        if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile delete' });
-
-        const { errors } = Joi.string().alphanum().required().min(4).validate(id);
-        if (errors || !isValidObjectId(id)) {
+        if (user._id !== id) {
+            try {
+                const hasPermission = await checkPermissions(user._id, ['userProfileDelete']);
+                if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile delete' });
+            } catch (error) {
+                return next(new HttpError());
+            }
+        }
+        const { error } = Joi.string().alphanum().required().min(4).validate(id);
+        if (error) {
             return res.status(403).json({
                 success: false,
                 message: 'error',
-                errors,
+                error,
             });
         }
         try {
             const userDoc = await Users.findOne({ _id: id, removed: false }).exec();
             if (!userDoc) return res.status(404).json({ success: false, message: 'no user found' });
             await userDoc.softRemove();
-            return res.status(200).json({ success: true, message: 'user removed' });
+            return res.status(200).json({ success: true, message: 'user successful deleted' });
+        } catch (error) {
+            return next(new HttpError());
+        }
+    };
+    public userRestore = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+        const { id } = req.params;
+        const user = req.user as IUsers;
+        if (!user._id || !isValidObjectId(user._id)) {
+            return res.status(401).json({ success: false, message: 'user not authorized - user profile delete' });
+        }
+        const { error } = Joi.string().alphanum().required().min(4).validate(id);
+        if (error) {
+            return res.status(403).json({
+                success: false,
+                message: 'error',
+                error,
+            });
+        }
+        if (!isValidObjectId(id)) return next(new HttpError(false, 'No user Id', 404));
+
+        try {
+            const hasPermission = await checkPermissions(user._id, ['userProfileRestore']);
+            if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile restore' });
+        } catch (error) {
+            return next(new HttpError());
+        }
+        try {
+            const doc = await Users.findOne({ _id: id, removed: true }).exec();
+            if (!doc) return res.status(404).json({ success: false, message: 'user not found' });
+            await doc.softRestore();
+            return res.status(200).json({ success: true, message: 'user successful restored' });
+        } catch (error) {
+            return next(new HttpError());
+        }
+    };
+    public profileActivate = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+        const { id } = req.params;
+        const user = req.user as IUsers;
+        if (!user._id || !isValidObjectId(user._id)) {
+            return res.status(401).json({ success: false, message: 'user not authorized - user profile delete' });
+        }
+        const { error } = Joi.string().alphanum().required().min(4).validate(id);
+        if (error) {
+            return res.status(403).json({
+                success: false,
+                message: 'error',
+                error,
+            });
+        }
+        if (!isValidObjectId(id)) return next(new HttpError(false, 'No user Id', 404));
+
+        try {
+            const hasPermission = await checkPermissions(user._id, ['userProfileActivate']);
+            if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile active' });
+        } catch (error) {
+            return next(new HttpError());
+        }
+        try {
+            const doc = await Users.findOne({ _id: id, removed: true, inActive: true }).exec();
+            if (!doc) return res.status(404).json({ success: false, message: 'user not found' });
+            doc?.set({ inActive: false });
+            await doc.save();
+            return res.status(200).json({ success: true, message: 'user successful activated' });
+        } catch (error) {
+            return next(new HttpError());
+        }
+    };
+    public profileDeActivate = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+        const { id } = req.params;
+        const user = req.user as IUsers;
+        if (!user._id || !isValidObjectId(user._id)) {
+            return res.status(401).json({ success: false, message: 'user not authorized - user profile delete' });
+        }
+        const { error } = Joi.string().alphanum().required().min(4).validate(id);
+        if (error) {
+            return res.status(403).json({
+                success: false,
+                message: 'error',
+                error,
+            });
+        }
+        if (!isValidObjectId(id)) return next(new HttpError(false, 'No user Id', 404));
+
+        try {
+            const hasPermission = await checkPermissions(user._id, ['userProfileDeActivate']);
+            if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile deactivate' });
+        } catch (error) {
+            return next(new HttpError());
+        }
+        try {
+            const doc = await Users.findOne({ _id: id, removed: false, inActive: false }).exec();
+            if (!doc) return res.status(404).json({ success: false, message: 'user not found' });
+            doc.set({ inActive: true });
+            await doc.save();
+            return res.status(200).json({ success: true, message: 'user successful deactivated' });
         } catch (error) {
             return next(new HttpError());
         }
@@ -206,10 +315,8 @@ class UserController extends UserVerificationController implements IUserControll
             return res.status(401).json({ success: false, message: 'user not authorized - user profile view' });
         }
         try {
-            // const hasPermission = await checkPermissions(curUser._id, ['userProfileView']);
-            // if (!hasPermission) return res.status(401).json({ success: false, message: 'user not authorized - user profile view' });
             const { id } = req.params;
-            const { error } = Joi.string().alphanum().max(50).validate(id);
+            const { error } = Joi.string().alphanum().required().max(50).validate(id);
             if (error || !isValidObjectId(id)) {
                 return res.status(403).json({
                     success: false,
@@ -217,15 +324,12 @@ class UserController extends UserVerificationController implements IUserControll
                     error,
                 });
             }
+            if (!isValidObjectId(id)) return next(new HttpError(false, 'No user Id', 404));
             const user = await Users.findOne({ _id: id, removed: false }).select({ password: 0, tokens: 0 }).lean();
             if (isEmpty(user || {})) {
                 return next(new HttpError(false, "user doesn't exists", 404));
             }
-            return res.status(200).json({
-                success: true,
-                message: 'user found',
-                data: user,
-            });
+            return res.status(200).json({ success: true, message: 'user found', data: user });
         } catch (error) {
             return next(new HttpError());
         }
